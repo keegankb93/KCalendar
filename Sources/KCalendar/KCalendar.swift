@@ -14,26 +14,38 @@ struct Day: Identifiable {
     let id = UUID()
 }
 
-struct CalendarView: View {
+struct CalendarData {
+    let calendar = Calendar(identifier: .gregorian)
+    let currentDate = Date()
     
-    let calendar = Calendar.current
+    var year: Int?
+    var month: Int?
+    var day: Int?
     
-    // bindings
-    // year
-    // month
-    // date
+    init(year: Int? = nil, month: Int? = nil, day: Int? = nil) {
+        self.year = year ?? calendar.dateComponents([.year], from: currentDate).year
+        self.month = month ?? calendar.dateComponents([.month], from: currentDate).month
+        self.day = day ?? calendar.dateComponents([.day], from: currentDate).day
+    }
+    
+    func getCurrentSelectedDate() -> Date {
+        guard let selectedDate = self.calendar.date(from: DateComponents(year: self.year, month: self.month, day: self.day))
+        else {
+            return self.currentDate
+        }
+        
+        return selectedDate
+    }
+}
 
+struct CalendarView: View {  
+    @State public var calendarDate = CalendarData(year: 2024, month: 8, day: 1)
+    
+    
     var body: some View {
         let columns = Array(repeating: GridItem(.fixed(40), spacing: 2), count: 7)
+        let manager = KCalendarManager(calendarDate: calendarDate)
 
-        let currentMonthDays = KCalendarManager().getAllDaysInMonth(year: 2024, month: 8)!
-        let startingWeekday = KCalendarManager().getStartingWeekday(for: currentMonthDays.first!.date)
-        
-        let previousMonthDays = KCalendarManager().getPreviousMonthDays(year: 2024, month: 8, count: startingWeekday - 1)
-        let totalCalendarSlotsFilled = startingWeekday - 1 + currentMonthDays.count
-        let nextMonthDays = KCalendarManager().getNextMonthPreview(year: 2024, month: 8, currentMonthDayCount: totalCalendarSlotsFilled)
-                
-        
         VStack {
             LazyVGrid(columns: columns) {
                 ForEach(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"], id: \.self) { shortName in
@@ -43,23 +55,25 @@ struct CalendarView: View {
             
             LazyVGrid(columns: columns) {
                 // Display previous month's days (grayed out)
-                ForEach(previousMonthDays) { day in
+                ForEach(manager.getPreviousMonthPreview()) { day in
                     Text("\(day.dayNumber)")
                         .foregroundColor(.gray)
                 }
                 
                 // Display current month's days
-                ForEach(currentMonthDays) { day in
+                ForEach(manager.getAllDaysInMonth()!) { day in
                     Text("\(day.dayNumber)")
                 }
                 .frame(maxHeight: .infinity)
                 
                 // Display next month's days (grayed out)
-                ForEach(nextMonthDays) { day in
+                ForEach(manager.getNextMonthPreview()) { day in
                     Text("\(day.dayNumber)")
                         .foregroundColor(.gray)
                 }
             }
+        }.onAppear {
+            
         }
         .padding(30)
     }
